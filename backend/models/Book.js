@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const thingSchema = mongoose.Schema({
+const bookSchema = mongoose.Schema({
     title: { type: String, required: true},
     author: { type: String, required: true },
     imageUrl: { type: String, required: true },
@@ -14,6 +14,21 @@ const thingSchema = mongoose.Schema({
         }
     ],
     averageRating: { type:Number, required: true } 
+});
+
+const averageRating = async(book) => {
+    if (book.ratings && book.ratings.length > 0) {
+        const totalNotes = book.ratings.reduce((total, rating) => total + rating.grade, 0);
+        book.averageRating = totalNotes / book.ratings.length;
+    } else {
+        book.averageRating = 0;
+    }
+    return book.averageRating;
+};
+
+bookSchema.pre('save', function (next) {
+    averageRating(this);
+    next();
 });
 
 module.exports = mongoose.model('Book', thingSchema);

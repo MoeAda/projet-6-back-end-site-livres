@@ -79,12 +79,43 @@ exports.deleteBook = (req, res, next) => {
 
 exports.getOneBook = (req, res, next) => {
   Book.findOne({ _id: req.params.id })
-    .then((thing) => res.status(200).json(book))
+    .then((book) => res.status(200).json(book))
     .catch((error) => res.status(400).json({ error }));
 };
 
 exports.getAllBooks = (req, res, next) => {
   Book.find()
-    .then((things) => res.status(200).json(books))
+    .then((books) => res.status(200).json(books))
     .catch((error) => res.status(400).json({ error }));
+};
+
+exports.ratingBook = (req, res, next) => {
+    const updatedRating = {
+        userId: req.auth.userId,
+        grade: req.body.rating
+    };
+    // Vérification des notes //
+    if (updatedRating.grade < 0 || updatedRating.grade > 5) {
+        return res.status(400).json({ message: 'La note doit se trouver entre 0 et 5' });
+    }
+    Book.findOne({ _id: req.params.id }) // Récupération du livre voulu //
+        .then((book) => {
+            if (book.ratings.find(r => r.userId === req.auth.userId)) { // Vérification si l'user n'a pas déjà mis une note //
+                return res.status(400).json({ message: 'Vous avez déjà noté ce livre' });
+            } else {
+                book.ratings.push(updatedRating); // On pousse la notation dans un tableau //
+                book.averageRating = (book.averageRating * (book.ratings.length - 1) + updatedRating.grade) / book.ratings.length; // Classe la note dans le tableau //
+                return book.save(); // Sauvegarde //
+            }
+        })
+        .then((updatedBook) => res.status(201).json(updatedBook))
+        .catch(error => res.status(400).json({ error }));
+};
+
+exports.getBestRatings = (req, res, next) => {
+    Book.find()
+    .sort({ averageRating: -1 })
+    .limit(3)
+    .then(books => res.status(200).json(books))
+    .catch(error => res.status(400).json({ error }));
 };
