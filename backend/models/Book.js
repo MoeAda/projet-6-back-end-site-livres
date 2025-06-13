@@ -31,4 +31,4 @@ bookSchema.pre('save', function (next) {
     next();
 });
 
-module.exports = mongoose.model('Book', thingSchema);
+module.exports = mongoose.model('Book', bookSchema);

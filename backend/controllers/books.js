@@ -62,7 +62,7 @@ exports.deleteBook = (req, res, next) => {
       if (book.userId != req.auth.userId) {
         res.status(401).json({ message: "Not authorized" });
       } else {
-        const filename = thing.imageUrl.split("/images/")[1];
+        const filename = book.imageUrl.split("/images/")[1];
         fs.unlink(`images/${filename}`, () => {
           Book.deleteOne({ _id: req.params.id })
             .then(() => {
@@ -90,26 +90,31 @@ exports.getAllBooks = (req, res, next) => {
 };
 
 exports.ratingBook = (req, res, next) => {
-    const updatedRating = {
-        userId: req.auth.userId,
-        grade: req.body.rating
-    };
-    // Vérification des notes //
-    if (updatedRating.grade < 0 || updatedRating.grade > 5) {
-        return res.status(400).json({ message: 'La note doit se trouver entre 0 et 5' });
-    }
-    Book.findOne({ _id: req.params.id }) // Récupération du livre voulu //
-        .then((book) => {
-            if (book.ratings.find(r => r.userId === req.auth.userId)) { // Vérification si l'user n'a pas déjà mis une note //
-                return res.status(400).json({ message: 'Vous avez déjà noté ce livre' });
-            } else {
-                book.ratings.push(updatedRating); // On pousse la notation dans un tableau //
-                book.averageRating = (book.averageRating * (book.ratings.length - 1) + updatedRating.grade) / book.ratings.length; // Classe la note dans le tableau //
-                return book.save(); // Sauvegarde //
-            }
-        })
-        .then((updatedBook) => res.status(201).json(updatedBook))
+  const userId = req.auth.userId;
+  const grade = req.body.rating; // ou req.body.grade selon ta structure
+
+  if (grade < 0 || grade > 5) {
+    return res.status(400).json({ message: "La note doit être entre 0 et 5" });
+  }
+
+  Book.findById(req.params.id)
+    .then((book) => {
+      if (!book) return res.status(404).json({ message: "Livre non trouvé" });
+
+      const existingRating = book.ratings.find(r => r.userId === userId);
+      if (existingRating) {
+        return res.status(403).json({ message: "Vous avez déjà noté ce livre" });
+      }
+
+      book.ratings.push({ userId, grade });
+      const sum = book.ratings.reduce((acc, r) => acc + r.grade, 0);
+      book.averageRating = sum / book.ratings.length;
+
+      book.save()
+        .then(() => res.status(200).json(book))
         .catch(error => res.status(400).json({ error }));
+    })
+    .catch(error => res.status(500).json({ error }));
 };
 
 exports.getBestRatings = (req, res, next) => {
