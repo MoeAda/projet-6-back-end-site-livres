@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 
 const User = require('../models/User');
 
+const { isEmail, isStrongPassword} = require('validator')
+
 exports.signup = (req, res, next) => {
     bcrypt.hash(req.body.password, 10)
         .then(hash => {
@@ -10,6 +12,11 @@ exports.signup = (req, res, next) => {
                 email: req.body.email,
                 password: hash
             });
+
+            if(!isEmail(req.body.email) || !isStrongPassword(req.body.password)){
+                res.status(400).json({message : 'Email ou mot de passe invalide'})
+            }
+
             user.save()
                 .then(() => res.status(201).json({ message: 'Utilisateur crée'}))
                 .catch(error => res.status(400).json({ error }));

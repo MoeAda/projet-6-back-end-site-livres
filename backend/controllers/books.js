@@ -3,7 +3,6 @@ const fs = require("fs");
 
 exports.createBook = async (req, res, next) => {
 
-    console.log("Je suis lààààà")
   try {
     const bookObject = JSON.parse(req.body.book);
     delete bookObject._id;
@@ -19,7 +18,6 @@ exports.createBook = async (req, res, next) => {
       averageRating: 0,
     });
 
-    console.log(book)
    await  book.save();
     res.status(201).json({ message: "Book saved" });
   } catch (error) {
@@ -110,6 +108,9 @@ exports.ratingBook = (req, res, next) => {
       const sum = book.ratings.reduce((acc, r) => acc + r.grade, 0);
       book.averageRating = sum / book.ratings.length;
 
+      console.log("SUM " . sum)
+      console.log("BOOK => " . book)
+
       book.save()
         .then(() => res.status(200).json(book))
         .catch(error => res.status(400).json({ error }));
@@ -117,10 +118,16 @@ exports.ratingBook = (req, res, next) => {
     .catch(error => res.status(500).json({ error }));
 };
 
-exports.getBestRatings = (req, res, next) => {
-    Book.find()
-    .sort({ averageRating: -1 })
-    .limit(3)
-    .then(books => res.status(200).json(books))
-    .catch(error => res.status(400).json({ error }));
+exports.getBestRatings = async (req, res, next) => {
+    try {
+        const books = await Book.find()
+        const topRated = books
+            .sort((a, b) => {
+                return b.averageRating - a.averageRating
+            })
+            .slice(0, 3)
+        res.status(200).json(topRated)
+    } catch (error) {
+        res.status(400).json({ error })
+    }
 };
